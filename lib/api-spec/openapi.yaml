@@ -1,0 +1,587 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: Shadow Garden community hub API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: auth
+    description: Authentication operations
+  - name: profile
+    description: User profile operations
+  - name: leaderboard
+    description: Leaderboard operations
+  - name: cards
+    description: Card collection operations
+  - name: chat
+    description: Real-time chat operations
+  - name: stats
+    description: Site statistics
+  - name: anime
+    description: Anime data from Anilist
+  - name: pokemon
+    description: Pokémon data from PokeAPI
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register with WhatsApp number or username
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "409":
+          description: Already exists
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with WhatsApp number or username
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current authenticated user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthenticated
+
+  /profile:
+    get:
+      operationId: getProfile
+      tags: [profile]
+      summary: Get user profile by userId query param (or own profile if omitted)
+      parameters:
+        - name: userId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+        "404":
+          description: Not found
+
+    patch:
+      operationId: updateProfile
+      tags: [profile]
+      summary: Update current user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileUpdate"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+
+  /leaderboard:
+    get:
+      operationId: getLeaderboard
+      tags: [leaderboard]
+      summary: Get top users leaderboard
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [balance, xp, cards, pokemon]
+            default: balance
+      responses:
+        "200":
+          description: Leaderboard entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeaderboardEntry"
+
+  /cards:
+    get:
+      operationId: listCards
+      tags: [cards]
+      summary: List cards with pagination and filtering
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 24
+        - name: rarity
+          in: query
+          schema:
+            type: string
+            enum: [common, uncommon, rare, epic, legendary, god]
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: userId
+          in: query
+          schema:
+            type: string
+          description: Filter by owner userId
+      responses:
+        "200":
+          description: Cards list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardsPage"
+
+  /chat/messages:
+    get:
+      operationId: getChatMessages
+      tags: [chat]
+      summary: Get recent chat messages
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: before
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Recent messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatMessage"
+
+    post:
+      operationId: sendMessage
+      tags: [chat]
+      summary: Send a chat message
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageInput"
+      responses:
+        "201":
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessage"
+
+  /stats:
+    get:
+      operationId: getSiteStats
+      tags: [stats]
+      summary: Get site-wide statistics
+      responses:
+        "200":
+          description: Site statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteStats"
+
+  /anime/trending:
+    get:
+      operationId: getTrendingAnime
+      tags: [anime]
+      summary: Get trending anime from Anilist
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Trending anime list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AnimeEntry"
+
+  /pokemon/featured:
+    get:
+      operationId: getFeaturedPokemon
+      tags: [pokemon]
+      summary: Get a set of featured Pokémon from PokeAPI
+      responses:
+        "200":
+          description: Featured Pokémon list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PokemonEntry"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+
+    MessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+
+    RegisterInput:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 3
+        whatsapp_number:
+          type: ["string", "null"]
+          description: WhatsApp number in format +1234567890 or @s.whatsapp.net lid
+        password:
+          type: string
+          minLength: 6
+        display_name:
+          type: ["string", "null"]
+
+    LoginInput:
+      type: object
+      required: [password]
+      properties:
+        username:
+          type: ["string", "null"]
+        whatsapp_number:
+          type: ["string", "null"]
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      required: [user, token]
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        token:
+          type: string
+
+    User:
+      type: object
+      required: [id, username, display_name, created_at]
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        display_name:
+          type: string
+        avatar_url:
+          type: ["string", "null"]
+        whatsapp_number:
+          type: ["string", "null"]
+        wallet:
+          type: integer
+          default: 0
+        bank:
+          type: integer
+          default: 0
+        level:
+          type: integer
+          default: 1
+        xp:
+          type: integer
+          default: 0
+        created_at:
+          type: string
+
+    Profile:
+      type: object
+      required: [id, username, display_name, wallet, bank, level, xp, created_at]
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        display_name:
+          type: string
+        avatar_url:
+          type: ["string", "null"]
+        cover_url:
+          type: ["string", "null"]
+        frame_url:
+          type: ["string", "null"]
+        bio:
+          type: ["string", "null"]
+        title:
+          type: ["string", "null"]
+        wallet:
+          type: integer
+        bank:
+          type: integer
+        level:
+          type: integer
+        xp:
+          type: integer
+        card_count:
+          type: integer
+        pokemon_count:
+          type: integer
+        guild:
+          type: ["string", "null"]
+        achievements:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+
+    ProfileUpdate:
+      type: object
+      properties:
+        display_name:
+          type: string
+        bio:
+          type: string
+        title:
+          type: string
+        avatar_url:
+          type: string
+        cover_url:
+          type: string
+        frame_url:
+          type: string
+
+    LeaderboardEntry:
+      type: object
+      required: [rank, user_id, username, display_name, value]
+      properties:
+        rank:
+          type: integer
+        user_id:
+          type: string
+        username:
+          type: string
+        display_name:
+          type: string
+        avatar_url:
+          type: ["string", "null"]
+        value:
+          type: integer
+        level:
+          type: integer
+        title:
+          type: ["string", "null"]
+
+    Card:
+      type: object
+      required: [id, name, rarity, image_url]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        rarity:
+          type: string
+          enum: [common, uncommon, rare, epic, legendary, god]
+        image_url:
+          type: string
+        anime:
+          type: ["string", "null"]
+        description:
+          type: ["string", "null"]
+        obtained_at:
+          type: ["string", "null"]
+
+    CardsPage:
+      type: object
+      required: [cards, total, page, limit]
+      properties:
+        cards:
+          type: array
+          items:
+            $ref: "#/components/schemas/Card"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    ChatMessage:
+      type: object
+      required: [id, user_id, username, content, created_at]
+      properties:
+        id:
+          type: string
+        user_id:
+          type: string
+        username:
+          type: string
+        display_name:
+          type: string
+        avatar_url:
+          type: ["string", "null"]
+        content:
+          type: string
+        created_at:
+          type: string
+
+    MessageInput:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 500
+
+    SiteStats:
+      type: object
+      required: [users, groups, cards, bots]
+      properties:
+        users:
+          type: integer
+        groups:
+          type: integer
+        cards:
+          type: integer
+        bots:
+          type: integer
+
+    AnimeEntry:
+      type: object
+      required: [id, title, cover_image, status, genres]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        cover_image:
+          type: string
+        banner_image:
+          type: ["string", "null"]
+        episodes:
+          type: ["integer", "null"]
+        score:
+          type: ["number", "null"]
+        status:
+          type: string
+        genres:
+          type: array
+          items:
+            type: string
+        description:
+          type: ["string", "null"]
+
+    PokemonEntry:
+      type: object
+      required: [id, name, sprite, types]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        sprite:
+          type: string
+        types:
+          type: array
+          items:
+            type: string
+        base_experience:
+          type: ["integer", "null"]
+        height:
+          type: integer
+        weight:
+          type: integer
